@@ -1,16 +1,11 @@
-import asyncio
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from mcp.server import Server
-from mcp.server.sse import SseServerTransport
+import os
 import uvicorn
+from mcp.server.fastmcp import FastMCP
 
 import docs_tool
 import gmail_tool
 
-mcp = Server("google-mcp")
+mcp = FastMCP("google-mcp")
 
 # Google Docs Tools
 @mcp.tool()
@@ -48,33 +43,8 @@ async def create_draft(to: str, subject: str, html_body: str, text_body: str) ->
     """Creates an email draft without sending."""
     return gmail_tool.create_draft(to, subject, html_body, text_body)
 
-app = FastAPI()
-sse = SseServerTransport("/messages/")
-
-@app.get("/sse")
-async def handle_sse(request: Request):
-    """MCP SSE endpoint."""
-    async with sse.connect_sse(
-        request.scope, 
-        request.receive, 
-        request._send
-    ) as (read_stream, write_stream):
-        await mcp.run(
-            read_stream, 
-            write_stream, 
-            mcp.create_initialization_options()
-        )
-
-@app.post("/messages/")
-async def handle_messages(request: Request):
-    """MCP Messages endpoint."""
-    await sse.handle_post_message(
-        request.scope, 
-        request.receive, 
-        request._send
-    )
-
-import os
+# The sse_app method returns an ASGI compatible Starlette app which is exactly what we need for Railway + Uvicorn
+app = mcp.sse_app()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
