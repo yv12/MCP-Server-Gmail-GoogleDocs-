@@ -1,1 +1,1 @@
-# MCP-Server-Gmail-GoogleDocs-
+# MCP-Server-Gmail-GoogleDocs
