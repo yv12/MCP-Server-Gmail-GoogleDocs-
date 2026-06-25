@@ -43,8 +43,29 @@ async def create_draft(to: str, subject: str, html_body: str, text_body: str) ->
     """Creates an email draft without sending."""
     return gmail_tool.create_draft(to, subject, html_body, text_body)
 
-# The sse_app method returns an ASGI compatible Starlette app which is exactly what we need for Railway + Uvicorn
-app = mcp.sse_app()
+# Wrap the SSE app with health check and root routes
+from starlette.applications import Starlette
+from starlette.routing import Route, Mount
+from starlette.responses import JSONResponse
+
+async def health(request):
+    return JSONResponse({"status": "ok", "server": "google-mcp"})
+
+async def root(request):
+    return JSONResponse({
+        "status": "ok",
+        "server": "google-mcp",
+        "sse_endpoint": "/sse",
+        "tools": ["get_document_url", "get_heading_link", "find_heading", "append_section", "send_email", "create_draft"]
+    })
+
+sse_app = mcp.sse_app()
+
+app = Starlette(routes=[
+    Route("/", root),
+    Route("/health", health),
+    Mount("/", app=sse_app),
+])
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
