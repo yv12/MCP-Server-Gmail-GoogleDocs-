@@ -1,11 +1,14 @@
 import os
 import uvicorn
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 import docs_tool
 import gmail_tool
 
-mcp = FastMCP("google-mcp")
+# Disable DNS rebinding protection to allow proxy connections from Railway
+security_settings = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+mcp = FastMCP("google-mcp", transport_security=security_settings)
 
 # Google Docs Tools
 @mcp.tool()
