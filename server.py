@@ -47,6 +47,8 @@ async def create_draft(to: str, subject: str, html_body: str, text_body: str) ->
 from starlette.applications import Starlette
 from starlette.routing import Route, Mount
 from starlette.responses import JSONResponse
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 
 async def health(request):
     return JSONResponse({"status": "ok", "server": "google-mcp"})
@@ -61,12 +63,17 @@ async def root(request):
 
 sse_app = mcp.sse_app()
 
-app = Starlette(routes=[
-    Route("/", root),
-    Route("/health", health),
-    Mount("/", app=sse_app),
-])
+app = Starlette(
+    routes=[
+        Route("/", root),
+        Route("/health", health),
+        Mount("/", app=sse_app),
+    ],
+    middleware=[
+        Middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+    ]
+)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("server:app", host="0.0.0.0", port=port)
+    uvicorn.run("server:app", host="0.0.0.0", port=port, proxy_headers=True, forwarded_allow_ips="*")
